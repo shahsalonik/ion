@@ -71,7 +71,7 @@ HOCO_END_DATE = datetime.date(2017, 10, 14)
 PRODUCTION = os.getenv("PRODUCTION", "").upper() == "TRUE"
 IN_CI = any(os.getenv(key, "").upper() == "TRUE" for key in ["TRAVIS", "GITHUB_ACTIONS"])
 # FIXME: figure out a less-hacky way to do this.
-TESTING = "test" in sys.argv
+TESTING = any("test" in arg for arg in sys.argv)
 LOGGING_VERBOSE = PRODUCTION
 
 # Whether to report master password attempts
@@ -240,9 +240,18 @@ PIPELINE = {
     "CSS_COMPRESSOR": None,
     "COMPILERS": ["pipeline.compilers.sass.SASSCompiler"],
     "STYLESHEETS": {
-        "base": {"source_filenames": ["css/base.scss", "css/themes.scss", "css/responsive.scss"], "output_filename": "css/base.css"},
-        "eighth.admin": {"source_filenames": ["css/eighth.common.scss", "css/eighth.admin.scss"], "output_filename": "css/eighth.admin.css"},
-        "eighth.signup": {"source_filenames": ["css/eighth.common.scss", "css/eighth.signup.scss"], "output_filename": "css/eighth.signup.css"},
+        "base": {
+            "source_filenames": ["css/base.scss", "css/themes.scss", "css/responsive.scss"],
+            "output_filename": "css/base.css",
+        },
+        "eighth.admin": {
+            "source_filenames": ["css/eighth.common.scss", "css/eighth.admin.scss"],
+            "output_filename": "css/eighth.admin.css",
+        },
+        "eighth.signup": {
+            "source_filenames": ["css/eighth.common.scss", "css/eighth.signup.scss"],
+            "output_filename": "css/eighth.signup.css",
+        },
     },
 }  # type: Dict[str,Any]
 
@@ -358,7 +367,7 @@ TEMPLATES = [
             ),
             "debug": True,  # Only enabled if DEBUG is true as well
             "loaders": ("django.template.loaders.filesystem.Loader", "django.template.loaders.app_directories.Loader"),
-            "libraries": {"staticfiles": "django.contrib.staticfiles.templatetags.staticfiles"},
+            "libraries": {"staticfiles": "django.templatetags.static"},
         },
     }
 ]  # type: List[Dict[str,Any]]
@@ -511,12 +520,14 @@ REST_FRAMEWORK = {
 
 # Django OAuth Toolkit configuration
 OAUTH2_PROVIDER = {
+    # this disables OIDC
+    "OIDC_ENABLED": False,
     # this is the list of available scopes
     "SCOPES": {"read": "Read scope", "write": "Write scope"},
     # OAuth refresh tokens expire in 30 days
     "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 30,
 }
-OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
+OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth.CSLApplication"
 
 INSTALLED_APPS = [
     # internal Django
@@ -565,6 +576,7 @@ INSTALLED_APPS = [
     "intranet.apps.nomination",
     "intranet.apps.sessionmgmt",
     "intranet.apps.features",
+    "intranet.apps.oauth",
     # Django plugins
     "widget_tweaks",
     "oauth2_provider",  # django-oauth-toolkit
@@ -665,7 +677,6 @@ LOGGING = {
         "sentry.errors": {"level": "DEBUG", "handlers": ["console"], "propagate": False},
     },
 }
-
 
 # The debug toolbar is always loaded, unless you manually override SHOW_DEBUG_TOOLBAR
 SHOW_DEBUG_TOOLBAR = os.getenv("SHOW_DEBUG_TOOLBAR", "YES") == "YES"
@@ -802,6 +813,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": celery.schedules.crontab(day_of_month=15, hour=1),
         "args": (),
     },
+    "follow-up-absence-emails": {
+        "task": "intranet.apps.eighth.tasks.follow_up_absence_emails",
+        "schedule": celery.schedules.crontab(day_of_month=3, hour=1),
+        "args": (),
+    },
 }
 
 MAINTENANCE_MODE = False
@@ -832,6 +848,8 @@ SIGNAGE_HEARTBEAT_OFFLINE_TIMEOUT_SECS = 2 * 60
 
 # Shows a warning message with yellow background on the login and all interior pages
 # GLOBAL_WARNING = "This is a message to display throughout the application."
+
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 try:
     from .secret import *  # noqa

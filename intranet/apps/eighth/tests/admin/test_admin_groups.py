@@ -166,7 +166,7 @@ class EighthAdminGroupsTest(EighthAbstractTest):
         group = Group.objects.get_or_create(name="test group 5")[0]
         user1 = get_user_model().objects.get_or_create(username="2021ttest", first_name="Tommy", last_name="Test", student_id=1234568)[0]
         user2 = get_user_model().objects.get_or_create(username="2021ttest1", first_name="Thomas", last_name="Test", student_id=1234567)[0]
-        user3 = get_user_model().objects.get_or_create(username="2021awilliam", first_name="A", last_name="William", student_id=12345679)[0]
+        user3 = get_user_model().objects.get_or_create(username="2021awilliam", first_name="A", last_name="William", student_id=1234569)[0]
         for member in [user1, user2, user3]:
             member.groups.add(group)
             member.save()
@@ -205,7 +205,7 @@ class EighthAdminGroupsTest(EighthAbstractTest):
             username="2021awilliam",
             first_name="A",
             last_name="William",
-            student_id=12345679,
+            student_id=1234569,
             user_type="student",
             graduation_year=get_senior_graduation_year(),
         )[0]
@@ -281,7 +281,7 @@ class EighthAdminGroupsTest(EighthAbstractTest):
             username="2021awilliam",
             first_name="A",
             last_name="William",
-            student_id=12345679,
+            student_id=1234569,
             user_type="student",
             graduation_year=get_senior_graduation_year(),
         )[0]
@@ -352,7 +352,7 @@ class EighthAdminGroupsTest(EighthAbstractTest):
             username="2021awilliam",
             first_name="A",
             last_name="William",
-            student_id=12345679,
+            student_id=1234569,
             user_type="student",
             graduation_year=get_senior_graduation_year(),
         )[0]
@@ -417,7 +417,7 @@ class EighthAdminGroupsTest(EighthAbstractTest):
             username="2021awilliam",
             first_name="A",
             last_name="William",
-            student_id=12345679,
+            student_id=1234569,
             user_type="student",
             graduation_year=get_senior_graduation_year(),
         )[0]
@@ -524,3 +524,32 @@ class EighthAdminGroupsTest(EighthAbstractTest):
         response = self.client.post(reverse("eighth_admin_remove_member_from_group", kwargs={"group_id": group.id, "user_id": user1.id}))
         self.assertEqual(302, response.status_code)
         self.assertNotIn(group, get_user_model().objects.get(id=user1.id).groups.all())
+
+    def test_delete_empty_groups(self):
+        """Tests :func:`~intranet.apps.eighth.views.admin.groups.delete_empty_groups_view`"""
+
+        self.make_admin()
+
+        # Create users
+        userA = get_user_model().objects.get_or_create(username="userA")[0]
+        userB = get_user_model().objects.get_or_create(username="userB")[0]
+
+        # Create groups
+        groupEmpty = Group.objects.get_or_create(name="Empty Group")[0]
+        groupNotEmpty = Group.objects.get_or_create(name="Not Empty Group")[0]
+
+        # Add users to group
+        groupNotEmpty.user_set.add(userA)
+        groupNotEmpty.user_set.add(userB)
+
+        response = self.client.post(reverse("eighth_admin_delete_empty_groups_view"))
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn(groupEmpty, Group.objects.all())
+
+        # Add user to other group
+        groupNotEmpty.user_set.remove(userA)
+        groupNotEmpty.user_set.remove(userB)
+
+        response = self.client.post(reverse("eighth_admin_delete_empty_groups_view"))
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn(groupNotEmpty, Group.objects.all())

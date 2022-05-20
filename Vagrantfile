@@ -62,12 +62,12 @@ Vagrant.configure("2") do |config|
     vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
     vb.name = "ion-vagrant"
     vb.memory = 2048 # the default of 512 gives us a OOM during setup.
-    vb.gui = true
+    vb.gui = false
   end
 
 
 
-  config.vm.network :private_network, ip: '192.168.50.50'
+  config.vm.network :private_network, ip: '192.168.56.50'
   if devconfig["use_nfs"]
       config.vm.synced_folder ".", "/home/vagrant/intranet", type: :nfs, nfs_udp: false
       config.nfs.map_uid = Process.uid

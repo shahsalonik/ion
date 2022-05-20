@@ -22,7 +22,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.generic.base import View
 
 from ...utils.date import get_senior_graduation_date, get_senior_graduation_year
-from ...utils.helpers import dark_mode_enabled, get_ap_week_warning
+from ...utils.helpers import awaredate, dark_mode_enabled, get_ap_week_warning
 from ..dashboard.views import dashboard_view, get_fcps_emerg
 from ..eighth.models import EighthBlock
 from ..events.models import Event
@@ -92,9 +92,7 @@ def get_week_sports_school_events() -> Tuple[Container[Event], Container[Event]]
     """
     cache_result = cache.get("sports_school_events")
     if not isinstance(cache_result, tuple):
-        events = Event.objects.filter(
-            time__gte=timezone.localtime(), time__lte=(timezone.localdate() + relativedelta(weeks=1)), public=True
-        ).this_year()
+        events = Event.objects.filter(time__gte=timezone.localtime(), time__lte=(awaredate() + relativedelta(weeks=1)), public=True).this_year()
         sports_events = list(events.filter(approved=True, category="sports").order_by("time")[:3])
         school_events = list(events.filter(approved=True, category="school").order_by("time")[:3])
 
@@ -209,13 +207,15 @@ class LoginView(View):
             #    """Eighthoffice's session should (almost) never expire."""
             #    request.session.set_expiry(timezone.now() + timedelta(days=30))
 
+            is_oauth_login = "/oauth/authorize" in request.POST.get("next", "")
+
             if not request.user.first_login:
                 logger.info("First login")
                 request.user.first_login = timezone.localtime()
                 request.user.save()
                 request.session["first_login"] = True
 
-                if request.user.is_student or request.user.is_teacher:
+                if (request.user.is_student or request.user.is_teacher) and (not is_oauth_login):  # don't send oauth to welcome page
                     default_next_page = "welcome"
                 else:
                     pass  # exclude eighth office/special accounts
@@ -224,7 +224,7 @@ class LoginView(View):
                 trust_session(request)
 
             # if the student has not seen the 8th agreement yet, redirect them
-            if request.user.is_student and not request.user.seen_welcome:
+            if request.user.is_student and not request.user.seen_welcome and not is_oauth_login:  # don't send oauth to welcome page
                 return redirect("welcome")
 
             next_page = request.POST.get("next", request.GET.get("next", default_next_page))

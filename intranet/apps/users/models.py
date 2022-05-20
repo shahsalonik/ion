@@ -210,8 +210,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_global_logout_time = models.DateTimeField(null=True)
 
     # Local preference fields
-    receive_news_emails = models.BooleanField(default=False)
-    receive_eighth_emails = models.BooleanField(default=False)
+    receive_news_emails = models.BooleanField(default=True)
+    receive_eighth_emails = models.BooleanField(default=True)
 
     receive_schedule_notifications = models.BooleanField(default=False)
 
@@ -225,7 +225,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     middle_name = models.CharField(max_length=70, null=True)
     last_name = models.CharField(max_length=70, null=True)
     nickname = models.CharField(max_length=35, null=True)
-    gender = models.NullBooleanField()
+    gender = models.BooleanField(null=True)
     preferred_photo = models.OneToOneField("Photo", related_name="+", null=True, blank=True, on_delete=models.SET_NULL)
     primary_email = models.OneToOneField("Email", related_name="+", null=True, blank=True, on_delete=models.SET_NULL)
     bus_route = models.ForeignKey(Route, on_delete=models.SET_NULL, null=True)
@@ -729,7 +729,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             Whether this user is a teacher.
 
         """
-        return self.user_type == "teacher" or self.user_type == "counselor"
+        return self.user_type in ("teacher", "counselor")
 
     @property
     def is_student(self) -> bool:
@@ -1398,7 +1398,7 @@ class Grade:
     @classmethod
     def year_from_grade(cls, grade: int) -> int:
         today = timezone.localdate()
-        if today.month >= settings.YEAR_TURNOVER_MONTH:
+        if today.month > settings.YEAR_TURNOVER_MONTH:
             current_senior_year = today.year + 1
         else:
             current_senior_year = today.year

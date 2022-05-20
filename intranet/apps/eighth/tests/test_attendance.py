@@ -16,7 +16,7 @@ class EighthAttendanceTestCase(EighthAbstractTest):
     """Test cases for ``views.attendance``."""
 
     def test_take_attendance(self):
-        """ Makes sure that taking attendance for activites with multiple students signed up works. """
+        """Makes sure that taking attendance for activites with multiple students signed up works."""
         self.make_admin()
 
         user1 = get_user_model().objects.create(
@@ -82,7 +82,7 @@ class EighthAttendanceTestCase(EighthAbstractTest):
         self.assertFalse(EighthScheduledActivity.objects.get(block=block, activity=activity).attendance_taken)
 
     def test_take_attendance_google_meet_csv(self):
-        """ Make sure taking attendence through an uploaded Google Meet file works. """
+        """Make sure taking attendence through an uploaded Google Meet file works."""
         self.make_admin()
         user1 = get_user_model().objects.create(
             username="user1", graduation_year=get_senior_graduation_year() + 1, student_id=12345, first_name="Test", last_name="User"
@@ -118,46 +118,6 @@ class EighthAttendanceTestCase(EighthAbstractTest):
 
         # Make sure EighthSignup object was marked absent for user2.
         self.assertTrue(EighthSignup.objects.get(user=user2, scheduled_activity=schact1).was_absent)
-
-        # Make sure bad file fails nicely with KeyError
-        with tempfile.NamedTemporaryFile(mode="w+") as f:
-            writer = csv.DictWriter(f, fieldnames=["NotName", "NotEmail"])
-            writer.writeheader()
-            writer.writerow({"NotName": "Test User", "NotEmail": "12345@fcpsschools.net"})
-            f.seek(0)
-            response = self.client.post(reverse("eighth_take_attendance", args=[schact1.id]), {"attendance": f}, follow=True)
-
-            self.assertIn(
-                "Could not interpret file. Did you upload a Google Meet attendance report without modification?",
-                list(map(str, list(response.context["messages"]))),
-            )
-            self.assertEqual(response.status_code, 200)
-
-        # Make sure bad file fails nicely with IndexError
-        with tempfile.NamedTemporaryFile(mode="w+") as f:
-            writer = csv.DictWriter(f, fieldnames=["Name", "Email"])
-            writer.writeheader()
-            writer.writerow({"Name": "User", "Email": "@fcpsschools.net"})
-            f.seek(0)
-            response = self.client.post(reverse("eighth_take_attendance", args=[schact1.id]), {"attendance": f}, follow=True)
-
-            self.assertIn(
-                "Could not interpret file. Did you upload a Google Meet attendance report without modification?",
-                list(map(str, list(response.context["messages"]))),
-            )
-            self.assertEqual(response.status_code, 200)
-
-        # Make sure bad file fails nicely with ValueError
-        with tempfile.NamedTemporaryFile(mode="w+") as f:
-            writer = csv.DictWriter(f, fieldnames=["Name", "Email"])
-            writer.writeheader()
-            writer.writerow({"Name": 1, "Email": 5})
-            f.seek(0)
-            self.assertIn(
-                "Could not interpret file. Did you upload a Google Meet attendance report without modification?",
-                list(map(str, list(response.context["messages"]))),
-            )
-            self.assertEqual(response.status_code, 200)
 
     def test_roster_view(self):
         """Tests :func:`~intranet.apps.eighth.views.attendance.roster_view`."""
